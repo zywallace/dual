@@ -1,0 +1,155 @@
+\documentclass[11pt]{article}
+%SetFonts
+% newpxtext+newpxmath
+\usepackage{newpxtext}
+\usepackage[scaled=.97]{cabin} %ss
+\usepackage[varqu,varl]{inconsolata} % tt
+\usepackage{amsmath}
+\usepackage[bigdelims]{newpxmath}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+%SetFonts
+
+% For algorithms
+\usepackage{algorithm}
+%\usepackage{algorithmic}
+\usepackage{algpseudocode}
+\usepackage{amssymb}
+
+\usepackage{epsfig}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amstext}
+\usepackage{amsmath}
+\usepackage{xspace}
+\usepackage{indentfirst}
+
+\usepackage{hyperref}
+\usepackage{fullpage}
+\usepackage{listings}
+\usepackage{color}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tb,
+  language=Java,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
+
+
+\usepackage{enumitem}
+
+
+ \usepackage{titlesec}
+
+\titleformat*{\section}{\bfseries}
+\titleformat*{\subsection}{\bfseries}
+\titleformat*{\subsubsection}{\bfseries}
+\titleformat*{\paragraph}{\bfseries}
+\titleformat*{\subparagraph}{\bfseries}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Document begins here %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+\begin{document}
+
+\noindent {\large {\bf 600.468 Machine Tranlation} \hfill {{\bf Fall 2017}}}\\
+{{\bf Interim Report} \hfill {{\bf Name:} Yu Zhao, Fan Yang, Zikun Chen} \\
+\part{Problem and Background}
+As neural machine translation (NMT) is making good progress in recent years, parallel corpuses with millions of sentence pairs of target and source language are urgently needed for training process. However, bilingual data needs tons of human effort to generate and this process is very costly. Meanwhile, monolingual data is much more plentiful and accessible compared to bilingual corpus. Hence, we wonder whether there is some way to use mainly monolingual data with limited amount of bilingual data to achieve comparable performance to traditional NMT with only parallel corpus.
+\newline
+
+We get our inspiration from one article\cite{he2016dual} we read during preliminary literature review, in this article they introduced a dual learning mechanism which helps NMT systems to automatically learn from unlabeled data in a dual learning game. Besides this dual learning mechanism they proposed, they also reported a very interesting observation: every machine translation task has a dual task, which is very useful in terms of providing feedbacks on how good a language model is.
+\\
+\newline
+\indent We borrowed the idea of "dual learning" and came up with a more specific topic: to investigate language model improvements using only monolingual corpus. We still need some aligned bilingual sentences to build the base models for primal task (French -> English) and dual task (English -> French), but in the subsequent reconstruction closed loop based on dual learning and interactive feedbacks, we can use only monolingual data. And it is our main interest to see how much monolingual corpus can contribute to the accuracy improvements, and we are also interested in how complete our experimental reimplementation of this "dual learning" idea can be, given that the research we based our project on doesn't provide any source code.
+
+\part{Outline}
+In an encoder-decoder architecture for NMT, it is believed that it can be trained in both direction with parallel sentence pairs, e.g., English to French and French to English. Therefore, this training process would form a repeated closed loop and two translation models should be able to improve themselves interactively given each other's output and feedbacks.
+\\
+\newline
+\indent To be more specific, let's consider the following scenario:
+\begin{enumerate}[label*=\arabic*.]
+\item The first agent A, who only has a language model of F and a translation model from F to E, receives a sentence in F, translates it to E and forward translated sentence to the second agent.
+
+\item The second agent B, who only has a language model of E and a translation model from E to F, receives the translated sentence in E. Then B checks and notifies the first agent whether it is a natural sentence in E using language model of E. Next, B translates it back to F and forward it to A.
+
+\item Now A checks and notifies B whether the message A receives is consistent with the original. Through the feedback, both A and B will know the performance of their translation model well and can improve them accordingly.
+
+\item This process can be iterated for many rounds until both translation models converge or other criteria like maximum iterations.
+\end{enumerate}
+\indent \indent  Let's denote above model as dual NMT. Notice that language model could be obtained using only monolingual data and we still need some parallel data to warm up / pre-implement two translation models in advance before the actual improvement process.
+\\
+\newline
+\indent We're going to use NMT built in HW5 for translation models in our final project and Pytorch to implement the rest, including language models training,  reinforcement learning process between two models and beam search during testing.
+
+\part{Algorithm}
+Assume we have fixed language models and monolingual corpuses, above scenario could be described as algorithm given below.
+\begin{algorithm}
+\begin{algorithmic}[1]
+\State \textbf{Input}: Monolingual corpuses $D_A$ and $D_B$, initial translation models $\Theta_{AB}$ and $\Theta_{BA}$, language models $LM_A$ and $LM_B$, hyper-parameter $\alpha$, beam search size $K$, learning rates $\gamma_1,\gamma_2$ .
+\Repeat
+\State Sample sentence $s_A$ and $s_B$ from $D_A$ and $ D_B$ respectively.
+
+\State Set $s = s_B$
+\State Generate top $K$ sentences using beam search according to translation model $\Theta_{AB}$
+\For{each intermediate sentence $s_k$}
+\State Set the language-model reward for the $k$th sampled sentence as $r_{1,k}=LM_B(s_{k})$.
+\State Set the communication reward for the $k$th sampled sentence as $r_{2,k}=\log P(s|s_{k};\Theta_{BA})$.
+\State Set the total reward of the $k$th sample as $r_k = \alpha r_{1,k} + (1-\alpha)r_{2,k}$.
+\EndFor
+\State Update Model:
+\begin{align*}
+\nabla_{\Theta_{AB}} E[r] &= \frac{1}{K}\sum^K_{k=1}[r_k\nabla_{\Theta_{AB}}\log P(s_{k}|s; \Theta_{AB})]&\Theta_{AB} \leftarrow\Theta_{AB} + \gamma_1\nabla_{\Theta_{AB}} E[r]\\
+\nabla_{\Theta_{BA}} E[r] &= \frac{1}{K}\sum^K_{k=1} [(1-\alpha)\nabla_{\Theta_{BA}} \log P(s|s_{k};\Theta_{BA})]&\Theta_{BA} \leftarrow\Theta_{BA} + \gamma_2\nabla_{\Theta_{BA}} E[r]\\
+\end{align*}
+\State Set $s = s_B$
+\State Go through 5 to 11 symmetrically.
+\Until{convergence}
+\end{algorithmic}
+\end{algorithm}
+\part{Settings}
+We're going to compare the performance on French $\leftrightarrow$ English translation and use \href{https://github.com/OpenNMT/OpenNMT-py}{\color{blue}{OpenNMT in PyTorch }} for all training and evaluation process. Baseline model we compare with our model is conventional NMT model as mentioned below.
+\\
+\newline
+\indent LSTM networks would be used and experimental parameters would be set according to \cite{bahdanau2014neural}. For each language, the vocabulary consist of the most common 30,000 words in the parallel corpuses, and unknown words were replaced with a special token as usual. For monolingual corpuses, sentences containing unknown tokens would be removed. Max length of source language would be 50 which means sentences with more than 50 words would be removed as well. Embedding sizes of both languages are 620 and hidden size of RNN is 1000. Bi-directional RNN would be used for encoder. Batch size is 80. Optimizer of AdaDelta is used and learning rate is 1.
+\\
+\newline
+\indent For our model, it needs a language model for each language. We use \href{https://github.com/mspandit/rnnlm}{\color{blue}{RNNLM Toolkit}}\cite{mikolov2010recurrent} for each language to generate language model using its corresponding monolingual corpus. The log likelihood of a received message is used to reward the communication channel (i.e., the translation model) in our experiments.
+\\
+\newline
+\indent For warmup (in this way our translation model would not just produce garbled sentences), we are going to train our model (on the same setting as above) on small set of bilingual data. For communication phase, $K=2$ and $\alpha = 0.005$. Optimizer of SGD would be used and learning rate $\gamma_1 = 0.0002, \gamma_2=0.02$
+\\
+\newline
+\indent As for generator, beam search of size 12 is used for both baseline model and our model.
+\part{Evaluation}
+Standard NMT would be trained on bilingual data \href{http://www.statmt.org/europarl/}{\color{blue}{Europarl v7}} and dual NMT as described above on monolingual data \href{http://www.statmt.org/wmt17/translation-task.html}{\color{blue}{News Crawl: articles from 2010}} and 10\% of bilingual data \href{http://www.statmt.org/europarl/}{\color{blue}{Europarl v7}}.  Following common practices, we use \href{http://data.statmt.org/wmt16/translation-task/dev.tgz}{\color{blue}{news-test2012}} and \href{http://data.statmt.org/wmt16/translation-task/dev.tgz}{\color{blue}{news-test2013}} as the validation and test data respectively.  BLEU score will be used as the evaluation metric for two models.
+\\
+\newline
+\indent For baseline model, we expect to achieve BELU score of around 27 for English to French and around 25 for French to English.
+\part{Reference}
+\begingroup
+\renewcommand{\section}[2]{}
+\bibliography{./final}
+\bibliographystyle{ieeetr}
+\nocite{*}
+\endgroup
+\end{document}
