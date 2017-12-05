@@ -53,10 +53,10 @@ if len(opt.gpuid) > 1:
     sys.stderr.write("Sorry, multigpu isn't supported yet, coming soon!\n")
     sys.exit(1)
 
-
 # Set up the Crayon logging server.
 if opt.exp_host != "":
     from pycrayon import CrayonClient
+
     cc = CrayonClient(hostname=opt.exp_host)
 
     experiments = cc.get_experiment_names()
@@ -83,7 +83,7 @@ def report_func(epoch, batch, num_batches,
         report_stats(Statistics): updated Statistics instance.
     """
     if batch % opt.report_every == -1 % opt.report_every:
-        report_stats.output(epoch, batch+1, num_batches, start_time)
+        report_stats.output(epoch, batch + 1, num_batches, start_time)
         if opt.exp_host:
             report_stats.log("progress", experiment, lr)
         report_stats = onmt.Statistics()
@@ -99,9 +99,9 @@ def make_train_data_iter(train_data, opt):
     like curriculum learning is ok too.
     """
     return onmt.IO.OrderedIterator(
-                dataset=train_data, batch_size=opt.batch_size,
-                device=opt.gpuid[0] if opt.gpuid else -1,
-                repeat=False)
+        dataset=train_data, batch_size=opt.batch_size,
+        device=opt.gpuid[0] if opt.gpuid else -1,
+        repeat=False)
 
 
 def make_valid_data_iter(valid_data, opt):
@@ -112,9 +112,9 @@ def make_valid_data_iter(valid_data, opt):
     is ok too.
     """
     return onmt.IO.OrderedIterator(
-                dataset=valid_data, batch_size=opt.batch_size,
-                device=opt.gpuid[0] if opt.gpuid else -1,
-                train=False, sort=True)
+        dataset=valid_data, batch_size=opt.batch_size,
+        device=opt.gpuid[0] if opt.gpuid else -1,
+        train=False, sort=True)
 
 
 def make_loss_compute(model, tgt_vocab, dataset, opt):
@@ -136,7 +136,6 @@ def make_loss_compute(model, tgt_vocab, dataset, opt):
 
 
 def train_model(model, train_data, valid_data, fields, optim):
-
     train_iter = make_train_data_iter(train_data, opt)
     valid_iter = make_valid_data_iter(valid_data, opt)
 
@@ -201,9 +200,9 @@ def tally_parameters(model):
 
 def load_fields(train, valid, checkpoint):
     fields = onmt.IO.load_fields(
-                torch.load(opt.data + '.vocab.pt'))
+        torch.load(opt.data + '.vocab.pt'))
     fields = dict([(k, f) for (k, f) in fields.items()
-                  if k in train.examples[0].__dict__])
+                   if k in train.examples[0].__dict__])
     train.fields = fields
     valid.fields = fields
 
@@ -259,11 +258,10 @@ def build_optim(model, checkpoint):
 
 
 def main():
-
     # Load train and validate data.
     print("Loading train and validate data from '%s'" % opt.data)
-    train = torch.load(opt.data + '.train.pt')
-    valid = torch.load(opt.data + '.valid.pt')
+    train = torch.load(opt.data + 'train')
+    valid = torch.load(opt.data + 'valid')
     print(' * number of training sentences: %d' % len(train))
     print(' * maximum batch size: %d' % opt.batch_size)
 
@@ -300,5 +298,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.argv = []
     main()
