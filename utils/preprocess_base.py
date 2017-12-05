@@ -5,11 +5,21 @@ import torch
 import onmt
 import onmt.IO
 import utils.opts as opts
+import sys
 
-def preprocess():
-    parser = argparse.ArgumentParser(
-        description='preprocess.py',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+def preprocess(prefix, lang):
+    train_src = prefix + "train.en"
+    train_trg = prefix + "train.fr"
+    val_src = prefix + "val.en"
+    val_trg = prefix + "val.fr"
+    if lang == 'fr':
+        train_src, train_trg = train_trg, train_src
+        val_src, val_trg = val_trg, val_src
+    sys.argv = ['', '-train_src', train_src, '-train_tgt', train_trg, '-valid_src', val_src, '-valid_tgt', val_trg, '-src',
+                lang, '-save_data', prefix]
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     opts.preprocess_opts(parser)
     opts.add_md_help_argument(parser)
