@@ -11,13 +11,13 @@ import sys
 def preprocess(prefix, lang):
     train_src = prefix + "train.en"
     train_trg = prefix + "train.fr"
-    val_src = prefix + "val.en"
-    val_trg = prefix + "val.fr"
+    val_src = prefix + "valid.en"
+    val_trg = prefix + "valid.fr"
     if lang == 'fr':
         train_src, train_trg = train_trg, train_src
         val_src, val_trg = val_trg, val_src
-    sys.argv = ['', '-train_src', train_src, '-train_tgt', train_trg, '-valid_src', val_src, '-valid_tgt', val_trg, '-src',
-                lang, '-save_data', prefix]
+    sys.argv = ['', '-train_src', train_src, '-train_tgt', train_trg, '-valid_src', val_src, '-valid_tgt', val_trg,
+                '-src', lang, '-save_data', prefix + lang + '/', '-lower']
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
@@ -26,6 +26,7 @@ def preprocess(prefix, lang):
     opt = parser.parse_args()
     torch.manual_seed(opt.seed)
 
+    print("Source language is {}".format("english" if lang == 'en' else "french"))
     print('Preparing training ...')
     with codecs.open(opt.train_src, "r", "utf-8") as src_file:
         src_line = src_file.readline().strip().split()
@@ -52,12 +53,13 @@ def preprocess(prefix, lang):
         src_seq_length_trunc=opt.src_seq_length_trunc,
         tgt_seq_length_trunc=opt.tgt_seq_length_trunc,
         dynamic_dict=opt.dynamic_dict)
-    print("Saving train/valid/fields")
+    print("Saving train/valid/fields to {}".format(opt.save_data))
 
     # Can't save fields, so remove/reconstruct at training time.
     torch.save(onmt.IO.save_vocab(fields),
-               open(opt.save_data + '.vocab.' + opt.src, 'wb'))
+               open(opt.save_data + 'vocab', 'wb'))
     train.fields = []
     valid.fields = []
-    torch.save(train, open(opt.save_data + '.train.' + opt.src, 'wb'))
-    torch.save(valid, open(opt.save_data + '.valid.' + opt.src, 'wb'))
+    torch.save(train, open(opt.save_data + 'train', 'wb'))
+    torch.save(valid, open(opt.save_data + 'valid', 'wb'))
+    print("Done!")
