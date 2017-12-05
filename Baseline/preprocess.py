@@ -2,10 +2,10 @@ import sys
 from utils.preprocess_base import preprocess as main
 
 if __name__ == "__main__":
-    train_src = "data/warmup/train.en"
-    train_trg = "data/warmup/train.fr"
-    val_src = "data/warmup/val.en"
-    val_trg = "data/warmup/val.fr"
+    train_src = "data/train.en"
+    train_trg = "data/train.fr"
+    val_src = "data/val.en"
+    val_trg = "data/val.fr"
 
     if sys.argv[1] == 'fr':
         train_src, train_trg = train_trg, train_src

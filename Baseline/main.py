@@ -15,12 +15,12 @@ import onmt.ModelConstructor
 import onmt.modules
 from onmt.Utils import aeq, use_gpu
 import utils.opts as opts
-from preprocess import preprocess
 
 parser = argparse.ArgumentParser(
     description='train.py',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+# opts.py
 opts.add_md_help_argument(parser)
 opts.model_opts(parser)
 opts.train_opts(parser)
@@ -258,12 +258,12 @@ def build_optim(model, checkpoint):
     return optim
 
 
-def init_tm(lang):
+def main():
+
     # Load train and validate data.
     print("Loading train and validate data from '%s'" % opt.data)
-    train = torch.load(opt.data + '.tm_train' + lang)
-    valid = torch.load(opt.data + '.tm_val' + lang)
-
+    train = torch.load(opt.data + '.train.pt')
+    valid = torch.load(opt.data + '.valid.pt')
     print(' * number of training sentences: %d' % len(train))
     print(' * maximum batch size: %d' % opt.batch_size)
 
@@ -298,4 +298,7 @@ def init_tm(lang):
     # Do training.
     train_model(model, train, valid, fields, optim)
 
-    return model
+
+if __name__ == "__main__":
+    sys.argv = []
+    main()

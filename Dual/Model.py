@@ -2,7 +2,7 @@ from LM.main import LM
 import torch.nn as nn
 from onmt.ModelConstructor import make_base_model
 from argparse import ArgumentParser
-from Utils.Opts import LM_opts
+from utils.opts import LM_opts
 from TM.main import init_tm
 
 class Dual(nn.Module):

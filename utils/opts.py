@@ -13,12 +13,13 @@ def LM_opts(parser):
                         help="Validation file loc. (default = ../data/lm_val.text)")
     parser.add_argument("-hidden_type", default="gru",
                         help="Hidden layer activation. (default = gru)")
-    parser.add_argument("-hidden", default=128,type=int,
+    parser.add_argument("-hidden", default=128, type=int,
                         help="Hidden size. (default = 128)")
-    parser.add_argument("-nce", default=20,type=int,
+    parser.add_argument("-nce", default=20, type=int,
                         help="Number of noise samples. (default = 20)")
-    parser.add_argument("-rl", default=0.01,type=float,
+    parser.add_argument("-rl", default=0.01, type=float,
                         help="Learning rate. (default = 0.01)")
+
 
 def model_opts(parser):
     """
@@ -31,9 +32,9 @@ def model_opts(parser):
     # Embedding Options
     parser.add_argument('-word_vec_size', type=int, default=-1,
                         help='Word embedding for both.')
-    parser.add_argument('-src_word_vec_size', type=int, default=500,
+    parser.add_argument('-src_word_vec_size', type=int, default=620,
                         help='Src word embedding sizes')
-    parser.add_argument('-tgt_word_vec_size', type=int, default=500,
+    parser.add_argument('-tgt_word_vec_size', type=int, default=620,
                         help='Tgt word embedding sizes')
 
     parser.add_argument('-feat_merge', type=str, default='concat',
@@ -56,7 +57,7 @@ def model_opts(parser):
                          and decoder.""")
 
     # RNN Options
-    parser.add_argument('-encoder_type', type=str, default='rnn',
+    parser.add_argument('-encoder_type', type=str, default='brnn',
                         choices=['rnn', 'brnn', 'mean', 'transformer', 'cnn'],
                         help="""Type of encoder layer to use.""")
     parser.add_argument('-decoder_type', type=str, default='rnn',
@@ -65,16 +66,16 @@ def model_opts(parser):
 
     parser.add_argument('-layers', type=int, default=-1,
                         help='Number of layers in enc/dec.')
-    parser.add_argument('-enc_layers', type=int, default=2,
+    parser.add_argument('-enc_layers', type=int, default=1,
                         help='Number of layers in the encoder')
-    parser.add_argument('-dec_layers', type=int, default=2,
+    parser.add_argument('-dec_layers', type=int, default=1,
                         help='Number of layers in the decoder')
 
     parser.add_argument('-cnn_kernel_width', type=int, default=3,
                         help="""Size of windows in the cnn, the kernel_size is
                          (cnn_kernel_width, 1) in conv layer""")
 
-    parser.add_argument('-rnn_size', type=int, default=500,
+    parser.add_argument('-rnn_size', type=int, default=1000,
                         help='Size of LSTM hidden states')
     parser.add_argument('-input_feed', type=int, default=1,
                         help="""Feed the context vector at each time step as
@@ -117,14 +118,13 @@ def model_opts(parser):
 
 
 def preprocess_opts(parser):
-    #file location
+    # file location
     parser.add_argument('-data_type', default="text",
                         help="Type of the source input. Options are [text|img].")
     parser.add_argument('-data_img_dir', default=".",
                         help="Location of source images")
-    parser.add_argument('-src',required=True,
+    parser.add_argument('-src', required=True,
                         help="source language")
-
 
     parser.add_argument('-train_src', required=True,
                         help="Path to the training source data")
@@ -149,9 +149,9 @@ def preprocess_opts(parser):
     parser.add_argument('-report_every', type=int, default=100000,
                         help="Report status every this many sentences")
     # Dictionary Options
-    parser.add_argument('-src_vocab_size', type=int, default=50000,
+    parser.add_argument('-src_vocab_size', type=int, default=30000,
                         help="Size of the source vocabulary")
-    parser.add_argument('-tgt_vocab_size', type=int, default=50000,
+    parser.add_argument('-tgt_vocab_size', type=int, default=30000,
                         help="Size of the target vocabulary")
 
     parser.add_argument('-src_words_min_frequency', type=int, default=0)
@@ -225,7 +225,7 @@ def train_opts(parser):
                         help="Fix word embeddings on the encoder side.")
 
     # Optimization options
-    parser.add_argument('-batch_size', type=int, default=64,
+    parser.add_argument('-batch_size', type=int, default=80,
                         help='Maximum batch size')
     parser.add_argument('-max_generator_batches', type=int, default=32,
                         help="""Maximum batches of words in a sequence to run
@@ -233,7 +233,7 @@ def train_opts(parser):
                         uses more memory.""")
     parser.add_argument('-epochs', type=int, default=13,
                         help='Number of training epochs')
-    parser.add_argument('-optim', default='sgd',
+    parser.add_argument('-optim', default='adadelta',
                         choices=['sgd', 'adagrad', 'adadelta', 'adam'],
                         help="""Optimization method.""")
     parser.add_argument('-max_grad_norm', type=float, default=5,
@@ -276,17 +276,17 @@ def train_opts(parser):
 def translate_opts(parser):
     parser.add_argument('-model', required=True,
                         help='Path to model .pt file')
-    parser.add_argument('-src',   required=True,
+    parser.add_argument('-src', required=True,
                         help="""Source sequence to decode (one line per
                         sequence)""")
-    parser.add_argument('-src_img_dir',   default="",
+    parser.add_argument('-src_img_dir', default="",
                         help='Source image directory')
     parser.add_argument('-tgt',
                         help='True target sequence (optional)')
     parser.add_argument('-output', default='pred.txt',
                         help="""Path to output the predictions (each line will
                         be the decoded sequence""")
-    parser.add_argument('-beam_size',  type=int, default=5,
+    parser.add_argument('-beam_size', type=int, default=5,
                         help='Beam size')
     parser.add_argument('-batch_size', type=int, default=30,
                         help='Batch size')
