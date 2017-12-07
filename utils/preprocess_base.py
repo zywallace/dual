@@ -6,18 +6,20 @@ import onmt
 import onmt.IO
 import utils.opts as opts
 import sys
+from utils.config import *
 
 
-def preprocess(prefix, lang):
-    train_src = prefix + "train.en"
-    train_trg = prefix + "train.fr"
-    val_src = prefix + "valid.en"
-    val_trg = prefix + "valid.fr"
+def preprocess(data, des, lang):
+    train_src = data + "train.en" + SUFFIX
+    train_trg = data + "train.fr" + SUFFIX
+    val_src = data + "valid.en" + SUFFIX
+    val_trg = data + "valid.fr" + SUFFIX
+
     if lang == 'fr':
         train_src, train_trg = train_trg, train_src
         val_src, val_trg = val_trg, val_src
     sys.argv = ['', '-train_src', train_src, '-train_tgt', train_trg, '-valid_src', val_src, '-valid_tgt', val_trg,
-                '-src', lang, '-save_data', prefix + lang + '/', '-lower']
+                '-save_data', des + lang + '/', '-lower']
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
@@ -26,7 +28,7 @@ def preprocess(prefix, lang):
     opt = parser.parse_args()
     torch.manual_seed(opt.seed)
 
-    print("Source language is {}".format("english" if lang == 'en' else "french"))
+    print("Source language is {}".format("English" if lang == 'en' else "French"))
     print('Preparing training ...')
     with codecs.open(opt.train_src, "r", "utf-8") as src_file:
         src_line = src_file.readline().strip().split()
@@ -58,8 +60,12 @@ def preprocess(prefix, lang):
     # Can't save fields, so remove/reconstruct at training time.
     torch.save(onmt.IO.save_vocab(fields),
                open(opt.save_data + 'vocab', 'wb'))
+    print(' * vocabulary size. source = %d; target = %d' %
+          (len(fields['src'].vocab), len(fields['tgt'].vocab)))
     train.fields = []
     valid.fields = []
     torch.save(train, open(opt.save_data + 'train', 'wb'))
+    print(' * number of training sentences: %d' % len(train))
     torch.save(valid, open(opt.save_data + 'valid', 'wb'))
+    print(' * number of validation sentences: %d' % len(valid))
     print("Done!")

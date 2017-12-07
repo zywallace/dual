@@ -200,7 +200,7 @@ def tally_parameters(model):
 
 def load_fields(train, valid, checkpoint):
     fields = onmt.IO.load_fields(
-        torch.load(opt.data + '.vocab.pt'))
+        torch.load(opt.data + 'vocab'))
     fields = dict([(k, f) for (k, f) in fields.items()
                    if k in train.examples[0].__dict__])
     train.fields = fields

@@ -2,11 +2,11 @@ import argparse
 from onmt.modules.SRU import CheckSRU
 
 
-def LM_opts(parser):
+def lm_opts(parser):
     parser.add_argument("-training_mode", default=False, type=bool,
                         help="Whether in training a new model. If false, load saved model. (default = False)")
-    parser.add_argument("-model", default="LM.model",
-                        help="Model loc. (default = LM)")
+    parser.add_argument("-model", default="lm/model",
+                        help="Model loc. (default = lm)")
     parser.add_argument("-train", default="../data/lm_train.txt",
                         help="Train file loc. (default = ../data/lm_train.txt)")
     parser.add_argument("-valid", default="../data/lm_val.txt",
@@ -123,8 +123,6 @@ def preprocess_opts(parser):
                         help="Type of the source input. Options are [text|img].")
     parser.add_argument('-data_img_dir', default=".",
                         help="Location of source images")
-    parser.add_argument('-src', required=True,
-                        help="source language")
 
     parser.add_argument('-train_src', required=True,
                         help="Path to the training source data")
@@ -154,8 +152,8 @@ def preprocess_opts(parser):
     parser.add_argument('-tgt_vocab_size', type=int, default=30000,
                         help="Size of the target vocabulary")
 
-    parser.add_argument('-src_words_min_frequency', type=int, default=0)
-    parser.add_argument('-tgt_words_min_frequency', type=int, default=0)
+    parser.add_argument('-src_words_min_frequency', type=int, default=1)
+    parser.add_argument('-tgt_words_min_frequency', type=int, default=1)
 
     # Truncation options
     parser.add_argument('-src_seq_length', type=int, default=50,
