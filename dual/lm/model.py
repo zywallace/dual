@@ -3,6 +3,7 @@ from os import system
 from math import log
 import torch
 
+
 class LM:
     def __init__(self, opt, lang):
         if opt.training_mode:
@@ -19,18 +20,20 @@ class LM:
 
         cmd = "./faster-rnnlm/faster-rnnlm/rnnlm -rnnlm {} -test tmp.txt".format(self.model)
         result = check_output(cmd, shell=True)
+        # maybe split by '\n'?
         score = []
+        base = log(10)
         for i in result:
             if i == "OOV":
                 print("here is an OOV")
                 score.append(float('-inf'))
             else:
-                score.append(float(i) * log(10))
-        return torch.stack(score)
+                score.append(float(i) * base)
+        return torch.FloatTensor(score)
 
     def score(self, pred):
         """
-        :param pred: batch * k predicted sentences - type: list of list
+        :param pred: batch * k predicted sentences - type: [[str]]
         :return: score: batch * k, pred's log prob, natural base
         """
         num = len(pred)

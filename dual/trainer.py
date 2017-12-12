@@ -72,9 +72,9 @@ class Trainer:
             model_a, model_b = model_b, model_a
             lm = self.lm_a
 
-        pred, pred_score, _ = model_a.translate(s, None)
+        pred, pred_score, _ = model_a.predict(s, None)
         r_1 = lm.score(pred)  # batch * k r_1 is not Variable
-        _, _, r_2 = model_b.translate(pred, s)
+        _, _, r_2 = model_b.predict(pred, s)
         r = self.alpha * r_1 + (1 - self.alpha) * r_2.data
 
         # batch * k

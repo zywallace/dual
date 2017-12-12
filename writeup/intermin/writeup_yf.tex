@@ -105,7 +105,7 @@ In an encoder-decoder architecture for NMT, it is believed that it can be traine
 Assume we have fixed language models and monolingual corpuses, above scenario could be described as algorithm given below.
 \begin{algorithm}
 \begin{algorithmic}[1]
-\State \textbf{Input}: Monolingual corpuses $D_A$ and $D_B$, initial translation models $\Theta_{AB}$ and $\Theta_{BA}$, language models $LM_A$ and $LM_B$, hyper-parameter $\alpha$, beam search size $K$, learning rates $\gamma_1,\gamma_2$ .
+\State \textbf{Input}: Monolingual corpuses $D_A$ and $D_B$, initial translation models $\Theta_{AB}$ and $\Theta_{BA}$, language models $LM_A$ and $LM_B$, hyper-parameter $\alpha$, $K$, learning rates $\gamma_1,\gamma_2$ .
 \Repeat
 \State Sample sentence $s_A$ and $s_B$ from $D_A$ and $ D_B$ respectively.
 
@@ -130,10 +130,12 @@ Assume we have fixed language models and monolingual corpuses, above scenario co
 We're going to compare the performance on French $\leftrightarrow$ English translation and use \href{https://github.com/OpenNMT/OpenNMT-py}{\color{blue}{OpenNMT in PyTorch }} for all training and evaluation process. Baseline model we compare with our model is conventional NMT model as mentioned below.
 \\
 \newline
-\indent LSTM networks would be used and experimental parameters would be set according to \cite{bahdanau2014neural}. For each language, the vocabulary consist of the most common 30,000 words in the parallel corpuses, and unknown words were replaced with a special token as usual. For monolingual corpuses, sentences containing unknown tokens would be removed. Max length of source language would be 50 which means sentences with more than 50 words would be removed as well. Embedding sizes of both languages are 620 and hidden size of RNN is 1000. Bi-directional RNN would be used for encoder. Batch size is 80. Optimizer of AdaDelta is used and learning rate is 1.
+\indent LSTM networks would be used and experimental parameters would be set according to \cite{bahdanau2014neural}. For each language, the vocabulary consist of the most common 30,000 words in the parallel corpuses, and unknown words were replaced with a special token as usual. For monolingual corpuses, sentences containing unknown tokens would be removed. Max length of source language would be 50 which means sentences with more than 50 words would be removed as well. Embedding sizes of both languages are 620 and hidden size of RNN is 1000. Bi-directional RNN would be used for encoder. Batch size is 80. Optimizer of AdaDelta is used and learning rate is 1. For the simplicity of our model, the layer of encoder and decoder is set to be 1.
 \\
 \newline
 \indent For our model, it needs a language model for each language. We use \href{https://github.com/mspandit/rnnlm}{\color{blue}{RNNLM Toolkit}}\cite{mikolov2010recurrent} for each language to generate language model using its corresponding monolingual corpus. The log likelihood of a received message is used to reward the communication channel (i.e., the translation model) in our experiments.
+
+{\color{red}{Setting here...}}
 \\
 \newline
 \indent For warmup (in this way our translation model would not just produce garbled sentences), we are going to train our model (on the same setting as above) on small set of bilingual data. For communication phase, $K=2$ and $\alpha = 0.005$. Optimizer of SGD would be used and learning rate $\gamma_1 = 0.0002, \gamma_2=0.02$
@@ -144,7 +146,7 @@ We're going to compare the performance on French $\leftrightarrow$ English trans
 Standard NMT would be trained on bilingual data \href{http://www.statmt.org/europarl/}{\color{blue}{Europarl v7}} and dual NMT as described above on monolingual data \href{http://www.statmt.org/wmt17/translation-task.html}{\color{blue}{News Crawl: articles from 2010}} and 10\% of bilingual data \href{http://www.statmt.org/europarl/}{\color{blue}{Europarl v7}}.  Following common practices, we use \href{http://data.statmt.org/wmt16/translation-task/dev.tgz}{\color{blue}{news-test2012}} and \href{http://data.statmt.org/wmt16/translation-task/dev.tgz}{\color{blue}{news-test2013}} as the validation and test data respectively.  BLEU score will be used as the evaluation metric for two models.
 \\
 \newline
-\indent For baseline model, we expect to achieve BELU score of around 27 for English to French and around 25 for French to English.
+\indent For baseline model, we expect to achieve BLEU score of around 27 for English to French and around 25 for French to English.
 \part{Reference}
 \begingroup
 \renewcommand{\section}[2]{}

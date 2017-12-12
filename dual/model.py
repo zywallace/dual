@@ -1,47 +1,45 @@
 import torch
-from itertools import zip_longest
 import onmt
 from torch.autograd import Variable
 from utils.beam import Beam
 from onmt.Utils import use_gpu
+from utils.loader import load_batch
+
 
 class TranslationModel:
     def __init__(self, model, fields, opt):
-
-
-        self.opt = opt
-        self.fields = fields
         self.model = model
+        self.fields = fields
+        self.opt = opt
 
-    def train(self):
-        self.model.train()
-        self.model.generator.train()
 
-    def eval(self):
-        self.model.eval()
-        self.model.generator.eval()
+    def comm_reward(self):
+        batch = load_batch(self.fields, self.opt)
 
-    def apply_lm(self, batch, data, direction):
-        assert direction in ["in", "out"]
-        self.eval()
+        _, src_lengths = batch.src
+        src = onmt.IO.make_features(batch, 'src')
+        tgt_in = onmt.IO.make_features(batch, 'tgt')[:-1]
 
-        pred_batch, gold_batch, pred_scores, gold_scores, attn, src \
-            = self.translate(batch, data)
-        if direction == "in":
-            return None, gold_scores
+        # go through encoder and decoder
+        enc_states, context = self.model.encoder(src, src_lengths)
+        dec_states = self.model.decoder.init_decoder_state(
+            src, context, enc_states)
+        dec_out, dec_states, attn = self.model.decoder(
+            tgt_in, context, dec_states)
 
-        z_batch = zip_longest(
-            pred_batch, gold_batch,
-            pred_scores, gold_scores,
-            (sent.squeeze(1) for sent in src.split(1, dim=1)))
-        pred = []
-        score = []
-        for pred_sents, gold_sent, pred_score, gold_score, src_sent in z_batch:
-            n_best_preds = [" ".join(pred) for pred in pred_sents[:self.opt.n_best]]
-            pred.append(n_best_preds)
-            score.append(pred_score[:self.opt.n_best])
-        self.train()
-        return pred, score
+        # gold_scores would be used for grad compute so its Variable
+        tt = torch.cuda if self.opt.cuda else torch
+        gold_scores = Variable(tt.FloatTensor(batch.batch_size).fill_(0))
+
+        tgt_pad = self.fields["tgt"].vocab.stoi[onmt.IO.PAD_WORD]
+        for dec, tgt in zip(dec_out, batch.tgt[1:]):
+            # Log prob of each word.
+            out = self.model.generator.forward(dec)
+            tgt = tgt.unsqueeze(1)
+            scores = out.gather(1, tgt)
+            scores.masked_fill_(tgt.eq(tgt_pad), 0)
+            gold_scores += scores
+        return gold_scores
 
     def build_trg_tok(self, pred, src, attn, copy_vocab):
         vocab = self.fields["tgt"].vocab
@@ -62,35 +60,7 @@ class TranslationModel:
                     tokens[i] = self.fields["src"].vocab.itos[src[max_index[0]]]
         return tokens
 
-    def _run_trg(self, batch, data):
-
-        _, src_lengths = batch.src
-        src = onmt.IO.make_features(batch, 'src')
-        tgt_in = onmt.IO.make_features(batch, 'tgt')[:-1]
-
-        #  (1) run the encoder on the src
-        enc_states, context = self.model.encoder(src, src_lengths)
-        dec_states = self.model.decoder.init_decoder_state(
-            src, context, enc_states)
-
-        #  (2) if a target is specified, compute the 'goldScore'
-        #  (i.e. log likelihood) of the target under the model
-        tt = torch.cuda if self.opt.cuda else torch
-        gold_scores = Variable(tt.FloatTensor(batch.batch_size).fill_(0))
-        dec_out, dec_states, attn = self.model.decoder(
-            tgt_in, context, dec_states)
-
-        tgt_pad = self.fields["tgt"].vocab.stoi[onmt.IO.PAD_WORD]
-        for dec, tgt in zip(dec_out, batch.tgt[1:]):
-            # Log prob of each word.
-            out = self.model.generator.forward(dec)
-            tgt = tgt.unsqueeze(1)
-            scores = out.gather(1, tgt)
-            scores.masked_fill_(tgt.eq(tgt_pad), 0)
-            gold_scores += scores
-        return gold_scores
-
-    def translate_batch(self, batch, data_set):
+    def translate_batch(self, batch):
         beam_size = self.opt.beam_size
         batch_size = batch.batch_size
 
@@ -153,11 +123,6 @@ class TranslationModel:
                 b.advance(out[:, j], unbottle(attn["std"])[:, j])
                 dec_states.beam_update(j, b.getCurrentOrigin().data, beam_size)
 
-        if "tgt" in batch.__dict__:
-            all_gold = self._run_trg(batch, data_set)
-        else:
-            all_gold = [0] * batch_size
-
         # (3) Package everything up.
         all_hyps, all_scores, all_attn = [], [], []
         for b in beam:
@@ -172,33 +137,25 @@ class TranslationModel:
             all_scores.append(scores)
             all_attn.append(attn)
 
-        return all_hyps, all_scores, all_attn, all_gold
+        return all_hyps, all_scores, all_attn
 
     def translate(self, batch, data):
         batch_size = batch.batch_size
 
         #  translate
-        pred, pred_score, attn, gold_score = self.translate_batch(batch, data)
-        assert (len(gold_score) == len(pred))
-        pred, pred_score, attn, gold_score, i = list(zip(
-            *sorted(zip(pred, pred_score, attn, gold_score,
-                        batch.indices),
+        pred, pred_score, attn = self.translate_batch(batch)
+        pred, pred_score, attn, i = list(zip(
+            *sorted(zip(pred, pred_score, attn, batch.indices),
                     key=lambda x: x[-1])))
         inds, perm = torch.sort(batch.indices)
 
         # to words
-        pred_batch, gold_batch = [], []
+        pred_batch = []
         src = batch.src[0].index_select(1, perm)
-        if self.opt.tgt:
-            tgt = batch.tgt.index_select(1, perm)
         for b in range(batch_size):
             src_vocab = data.src_vocabs[inds[b]]
             pred_batch.append(
                 [self.build_trg_tok(pred[b][n], src[:, b],
                                     attn[b][n], src_vocab)
                  for n in range(self.opt.n_best)])
-            if self.opt.tgt:
-                gold_batch.append(
-                    self.build_trg_tok(tgt[1:, b], src[:, b],
-                                       None, None))
-        return pred_batch, gold_batch, pred_score, gold_score, attn, src
+        return pred_batch, pred_score
