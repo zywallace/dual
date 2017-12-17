@@ -104,11 +104,11 @@ Note that baseline model in each direction should be trained separately while du
 Assume we have fixed language models and monolingual corpuses, above scenario could be described as algorithm given below. Notice here reward is log probability so it's negative and greater is better, while the loss function here is negative log probability so we want it to be small.
 \begin{algorithm}
 \begin{algorithmic}[1]
-\State \textbf{Input}: Monolingual corpuses $D_A$ and $D_B$, initial translation models $\Theta_{AB}$ and $\Theta_{BA}$, fixed language models $LM_A$ and $LM_B$, hyper-parameter $\alpha$, $K$, learning rates $\gamma_1,\gamma_2$ .
+\State \textbf{Input}: Monolingual corpuses $D_A$ and $D_B$, initial translation models $\Theta_{AB}$ and $\Theta_{BA}$, fixed language models $LM_A$ and $LM_B$, hyper-parameter $\alpha$, beam search size $K$, learning rates $\gamma_1,\gamma_2$
 \Repeat
 \State Sample sentence $s_A$ and $s_B$ from $D_A$ and $ D_B$ respectively.
 
-\State Set $s = s_B$
+\State Set $s = s_A$
 \State Generate top $K$ sentences using beam search according to translation model $\Theta_{AB}$
 \For{each intermediate sentence $s_k$}
 \State Set the language-model reward for the $k$th sampled sentence as $r_{1,k}=LM_B(s_{k})$.
@@ -145,7 +145,7 @@ We compared the performance on French $\leftrightarrow$ English translation and 
 \indent We used corpuses from WMT 14. Baseline NMT was trained on bilingual data News Commentary and dual NMT as described above on monolingual data News Crawl: articles from 2010 and 10\% of News Commentary. Note that we want our training process of dual model to be finished in reasonable time. So we randomly picked 160k sentences (which is almost the same size as bilingual data) from both corpuses when the whole corpuses were still used to train our language models. Following common practices, we use news-test2012 and news-test2013 as the validation and test data respectively.
 \\
 \newline
-\indent Moses tokenizer\footnote{https://github.com/moses-smt/mosesdecoder/tree/master/scripts} were used to preprocess raw data and \texttt{multi-bleu.perl} was used to compute BLEU score.
+\indent Moses tokenizer\footnote{https://github.com/moses-smt/mosesdecoder/tree/master/scripts} were used to process raw data and \texttt{multi-bleu.perl} was used to compute BLEU score.
 
 \part{Results}
 The table \ref{table:1} shows performance of baseline and dual model on testing data. 
@@ -165,17 +165,22 @@ The table \ref{table:1} shows performance of baseline and dual model on testing 
 \end{center}
 \end{table}
 
-In original paper\cite{he2016dual}, it was shown dual model outperformed standard NMT(baseline model in our experiment) by around 3 points in both direction. Our implementation couldn't meet the same level of improvement and potential causes will be discussed in the next section.
+In original paper\cite{he2016dual}, it was shown dual model outperformed standard NMT(baseline model in our experiment) by around 3 points in both direction. Our implementation couldn't meet the same level of improvement thought same level of BLEU scores was achieved and potential causes will be discussed in the next section.
 \part{Discussion}
-\section{Overall performance}
-Although we didn't produce similar level of improvement from baseline model as in the paper, we still could see our dual model managed to 
+Although we didn't produce similar level of improvement from baseline model as in the paper, we still could see dual model managed to catch up with the performance of baseline NMT model. It might indicate the proposed model did work and could be trained with monolingual data mostly. Meanwhile, dual model may be more sensitive to choices of hyper parameters and other training strategies.
 
-\section{Warm up process}
-There is a soft-landing strategy mentioned in paper we didn't implement. They tried to smooth the transition from initial model to dual training process by mixing monolingual and bilingual data in batch at the beginning and gradually decreasing the percentage of bilingual data to zero. While we just used monolingual data from start, this could potentially update gradient in the wrong direction.
-\section{Parameter choice and Data}
-Original paper didn't specify several settings of dual model like the number of layers, if dropout was used and setting of language model, which may change the behavior of our model profoundly.
+\section{Warm up and soft landing}
+There is a soft-landing strategy mentioned in paper we didn't implement. They tried to smooth the transition from initial model to dual training process by mixing monolingual and bilingual data in batch at the beginning of dual learning and gradually decreasing the percentage of bilingual data to zero. While we just used monolingual data from start, this could potentially update gradient in the wrong direction. 
+
+Authors also states in the paper\cite{he2016dual} that if we didn't warm up initial translation model using bilingual data, dual learning might fail to deliver expected results, which, we believe, shares the same cause as our problem.
+
+\section{Dual training options}
+Original paper didn't specify several settings of dual model like the number of layers, if dropout was used and setting of language model, which may change the behavior of our model profoundly. We think our model's performance would be improved if we used multi-layer encoder and decoder.
 
 Since our resource was limited, our couldn't train our model on the same dataset and in the same time as used in the paper. Our bilingual data was about 160 thousand sentences while their was 12 million. Also they didn't mentioned choice of their tokenizer and different tokenizers would produce inconsistent results as mentioned in \texttt{multi-bleu.perl}.
+
+\section{RNNLM}
+We used different RNN language model(RNNLM) toolkit as indicated in the paper since this toolkit took less time to train our models and meanwhile NCE model has better performance in terms of perplexity. So different RNNLM was used and though it would unlikely cause worse performance, we think it's worth mentioning it.
 \part{Reference}
 \begingroup
 \renewcommand{\section}[2]{}
